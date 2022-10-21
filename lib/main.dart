@@ -1,8 +1,9 @@
-import 'dart:ffi';
-
+import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio/dio.dart';
-import 'package:exercice_2/transfer.dart';
+import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 import 'package:flutter/material.dart';
+
+import 'DTO.dart';
 
 void main() {
   runApp(const MyApp());
@@ -17,27 +18,12 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Flutter Demo',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or simply save your changes to "hot reload" in a Flutter IDE).
-        // Notice that the counter didn't reset back to zero; the application
-        // is not restarted.
         primarySwatch: Colors.blue,
       ),
       home: const MyHomePage(title: 'Flutter Demo Home Page'),
     );
   }
 }
-
-String mois = "";
-String annee = "";
-String jour = "";
-
-List<Info> infos = [];
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
@@ -47,76 +33,127 @@ class MyHomePage extends StatefulWidget {
   @override
   State<MyHomePage> createState() => _MyHomePageState();
 }
-class _MyHomePageState extends State<MyHomePage> {
 
-  void Info() async {
+class SingletonDio {
+
+  static var cookiemanager = CookieManager(CookieJar());
+
+  static Dio getDio() {
     Dio dio = Dio();
-    var response = await dio.get('https://exercices-web.herokuapp.com/exam/$annee/$mois/$jour');
-    for(var date in response.data)
-      {
+    dio.interceptors.add(cookiemanager);
+    return dio;
+  }
+}
+
+class _MyHomePageState extends State<MyHomePage> {
+  int _counter = 0;
+  List<Date> listDate = [];
+
+  String jourField = '';
+  String moisField = '';
+  String anneeField = '';
+
+  void _incrementCounter() async {
+
+    try {
+      var response = await SingletonDio.getDio().get('https://exercices-web.herokuapp.com/exam/$anneeField/$moisField/$jourField');
+      print(response);
+
+      for(var res in response.data){
+        Date date = Date.fromJson(res);
+        listDate.add(date);
         print(date);
-        infos.add(date);
       }
+      setState(() {});
+
+
+    } catch (e) {
+      print(e);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
-
+      appBar: AppBar(
+        title: Text(widget.title),
+      ),
       body: Center(
-        child: Column(mainAxisAlignment: MainAxisAlignment.center,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-          Expanded(
-            child : ListView.builder(
-              // Let the ListView know how many items it needs to build.
-              itemCount: infos.length,
-              // Provide a builder function. This is where the magic happens.
-              // Convert each item into a widget based on the type of item it is.
-              itemBuilder: (context, index) {
-                final item = infos[index];
-
-                return ListTile(
-                  title: Text(item.annee),
-                  subtitle: Text(item.mois),
-                );
-              },
+            Expanded(
+              flex: 1,
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: 1,
+                      child: TextField(
+                        onChanged: (value) {
+                          jourField = value;
+                        },
+                        decoration: InputDecoration(
+                          hintText: 'jour',
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 1,
+                      child: TextField(
+                        onChanged: (value) {
+                          moisField = value;
+                        },
+                        decoration: InputDecoration(
+                          hintText: 'mois',
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 1,
+                      child: TextField(
+                        onChanged: (value) {
+                          anneeField = value;
+                        },
+                        decoration: InputDecoration(
+                          hintText: 'annee',
+                        ),
+                      ),
+                    ),
+                  ],
+                )
             ),
-          ),
-                TextField(
-                  decoration: const InputDecoration(
-                    hintText: 'année',
-                    // TODO: add errorHint
-                  ),
-                  onChanged: (value) => annee = value,
-                ),
-                TextField(
-                  decoration: const InputDecoration(
-                    hintText: 'mois',
-                    // TODO: add errorHint
-                  ),
-                  onChanged: (value) => mois = value,
-                ),
-                TextField(
-                  decoration: const InputDecoration(
-                    hintText: 'jour',
-                    // TODO: add errorHint
-                  ),
-                  onChanged: (value) => jour = value,
-                ),
-              ],
+            Expanded(
+              flex: 9,
+              child: ListView(
+                children: this.listDate.map(pipo).toList(),
+              ),
+            )
+          ],
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: Info,
+        onPressed: _incrementCounter,
         tooltip: 'Increment',
         child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+      ),
     );
   }
+}
+
+Widget pipo(Date e)  {
+  return Padding(
+    padding: const EdgeInsets.all(8.0),
+    child: ListTile(
+      tileColor: Colors.blue,
+      title: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          Text(e.jour.toString()),
+          Text(e.mois.toString()),
+          Text(e.annee.toString()),
+          Text(e.jourDeLaSemaine)
+        ],
+      ),
+    ),
+  );
 }
